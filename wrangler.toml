@@ -1,0 +1,37 @@
+name = "emos-watchlist"
+main = "src/index.js"
+compatibility_date = "2026-05-01"
+
+# ===== 定时抓取（Cron Triggers）=====
+# 单条「每小时心跳」：每次触发后，代码按 D1config 里存的间隔（热门每 N 小时、深翻每 N 小时）
+# 决定各片单这次跑不跑。间隔在控制台即时调整、无需重部署；改这里的 cron 频率才需 deploy。
+[triggers]
+crons = [
+  "0 * * * *",   # 心跳：每小时整点。间隔由控制台 / config 表的 __global__ 行控制
+]
+
+# ===== D1 数据库（必需，binding 必须叫 DB）=====
+# 1) 创建：npx wrangler d1 create emos-watchlist
+# 2) 把输出的 database_id 填到下面
+# 3) 建表：npx wrangler d1 execute emos-watchlist --remote --file=schema.sql
+[[d1_databases]]
+binding = "DB"
+database_name = "emos-watchlist"
+database_id = "<把 wrangler d1 create 输出的 id 填这里>"
+
+# ===== 非敏感配置 =====
+[vars]
+TMDB_LANG     = "zh-CN"       # TMDB 返回语言（中文标题）
+TMDB_REGION   = "CN"          # 地区，影响上映/排行口径
+DEFAULT_LIST  = "tv"          # 访问根路径 / 时返回的片单
+HOT_PAGES     = "5"           # 热门每次每来源抓页数（5×20=100 条）
+DEEP_PAGES    = "5"           # 游标每次每来源深翻页数（5×20=100 条）
+LISTS_ENABLED = "tv,anime"    # 初始默认启用的片单（仅作种子）；控制台开关后以 D1 config.enabled 为准
+
+# 可选：覆盖某片单标题，如  NAME_TRENDING = "本周必看"（控制台自定义优先级更高）
+# 可选：固定封面图          COVER = "https://your.cdn/cover.png"（控制台 per-list 封面优先级更高）
+# 注：抓取间隔不再用 cron 区分，改由控制台 / config 表的 __global__ 行控制（热门/深翻各自每 N 小时）。
+
+# ⚠️ 两个 secret，不要写进文件：
+#   npx wrangler secret put TMDB_TOKEN    # TMDB v4 Read Token(JWT) 或 v3 API Key，二者皆可
+#   npx wrangler secret put ADMIN_TOKEN   # 任意字符串，保护手动触发端点 /admin/refresh
